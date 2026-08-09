@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All in One Photo Tool - VIP Studio Edition</title>
+    <!-- OCR Engine for Screenshot Verification -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #121212; color: #fff; text-align: center; padding-bottom: 30px; }
+        
+        /* Header Section */
+        header { background: #1f1f1f; padding: 12px 15px; border-bottom: 2px solid #00e676; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .logo { font-size: 16px; font-weight: bold; color: #00e676; display: flex; align-items: center; gap: 5px; }
+        .header-actions { display: flex; align-items: center; gap: 8px; }
+        .lang-select { background: #333; color: #00e676; border: 1px solid #00e676; border-radius: 6px; padding: 4px 6px; font-size: 11px; font-weight: bold; cursor: pointer; }
+        .vip-status { background: #ffd700; color: #000; padding: 5px 10px; border-radius: 12px; font-weight: bold; font-size: 11px; cursor: pointer; }
+
+        /* Trust Banner */
+        .trust-badge { background: linear-gradient(90deg, #11998e, #38ef7d); color: #000; font-weight: bold; font-size: 11px; padding: 6px; margin: 8px auto; width: 92%; border-radius: 6px; box-shadow: 0 0 10px rgba(56,239,125,0.3); }
+
+        /* Ad Slots */
+        .ad-slot { background: #2a2a2a; color: #888; padding: 10px; margin: 10px auto; max-width: 90%; border: 1px dashed #555; border-radius: 8px; font-size: 12px; }
+
+        /* Navigation Tabs */
+        .tabs { display: flex; background: #222; overflow-x: auto; border-bottom: 1px solid #333; }
+        .tab-btn { background: none; border: none; color: #aaa; padding: 12px 15px; font-size: 13px; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; }
+        .tab-btn.active { color: #00e676; border-color: #00e676; font-weight: bold; }
+        .tab-btn.admin-tab { color: #ff5252; font-weight: bold; }
+
+        /* Main Section Container */
+        .section { display: none; padding: 15px; max-width: 600px; margin: 0 auto; }
+        .section.active { display: block; }
+
+        /* Controls */
+        canvas { max-width: 100%; height: auto; border: 2px solid #444; border-radius: 8px; margin-top: 10px; background: #000; }
+        input[type="file"], input[type="text"], input[type="password"], select { margin: 8px 0; padding: 10px; width: 90%; border-radius: 6px; border: 1px solid #444; background: #222; color: #fff; }
+        .btn { background: #00e676; color: #000; border: none; padding: 10px 18px; font-weight: bold; border-radius: 6px; cursor: pointer; margin: 5px; font-size: 13px; }
+        .btn:disabled { background: #555; color: #888; cursor: not-allowed; }
+        .btn-danger { background: #ff5252; color: #fff; }
+        .btn-blue { background: #0088cc; color: #fff; }
+        .btn-tool { background: #333; color: #00e676; border: 1px solid #00e676; padding: 6px 12px; font-size: 11px; margin: 3px; }
+
+        /* Result Cards & Watermark */
+        .card { background: #222; padding: 12px; margin: 10px auto; width: 100%; border-radius: 8px; border: 1px solid #333; text-align: left; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .card-text { font-size: 14px; line-height: 1.5; color: #ddd; white-space: pre-line; }
+        .watermark-info { font-size: 12px; color: #ffeb3b; margin-top: 5px; }
+
+        /* CEO Dashboard & Modal Box */
+        .ceo-box { background: #1a1a1a; border: 2px solid #ff5252; padding: 15px; border-radius: 10px; margin-top: 10px; text-align: left; }
+        .setting-row { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; padding: 8px 0; border-bottom: 1px solid #333; }
+        .login-box { background: #1f1f1f; border: 1px solid #ff5252; padding: 20px; border-radius: 8px; margin-top: 20px; }
+
+        /* VIP Payment Modal */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; overflow-y: auto; }
+        .payment-card { background: #1f1f1f; border: 2px solid #ffd700; padding: 20px; border-radius: 12px; width: 90%; max-width: 420px; text-align: center; margin: 20px 0; }
+        .qr-img { width: 220px; height: 220px; border-radius: 8px; border: 2px solid #fff; margin: 10px 0; object-fit: contain; background: #fff; }
+        .error-msg { color: #ff5252; font-size: 12px; margin-top: 5px; display: none; font-weight: bold; text-align: center; }
+        .status-msg { color: #00e676; font-size: 12px; margin-top: 5px; display: none; font-weight: bold; }
+
+        /* Gallery Grid */
+        .gallery-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .gallery-item { background: #222; border-radius: 8px; padding: 8px; border: 1px solid #333; }
+        .gallery-item img { width: 100%; border-radius: 6px; height: 120px; object-fit: cover; }
+
+        /* Tool Panel Styling */
+        .tool-box { background: #1a1a1a; padding: 10px; border-radius: 8px; margin-top: 10px; border: 1px solid #333; text-align: left; }
+        .tool-title { font-size: 12px; color: #ffd700; margin-bottom: 5px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="logo">🔒 All in One Photo Tool</div>
+        <div class="header-actions">
+            <!-- LANGUAGE SWITCHER DROPDOWN -->
+            <select class="lang-select" id="languageSelector" onchange="switchLanguage(this.value)">
+                <option value="hi" selected>🌐 हिंदी</option>
+                <option value="en">🌐 English</option>
+            </select>
+            <div class="vip-status" id="vipStatusBadge" onclick="openVIPPaymentModal()" data-i18n="vipBadge">💎 VIP Unlock</div>
+        </div>
+    </header>
+
+    <!-- Trust Indicator -->
+    <div class="trust-badge" data-i18n="trustBadge">
+        ✓ 100% Safe & Secure Studio Quality | Trusted by 50,000+ Users
+    </div>
+
+    <!-- Top Ad Slot -->
+    <div class="ad-slot" id="topAdSlot">[ Top Ad Banner - CEO Admin Managed ]</div>
+
+    <!-- Main Navigation Tabs -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('editor', event)" data-i18n="tabStudio">Photo Studio</button>
+        <button class="tab-btn" onclick="switchTab('stylist', event)" data-i18n="tabStylist">Fancy Names</button>
+        <button class="tab-btn" onclick="switchTab('bio', event)" data-i18n="tabBio">Bio Creator</button>
+        <button class="tab-btn" onclick="switchTab('gallery', event)" data-i18n="tabGallery">Public Gallery</button>
+        <button class="tab-btn admin-tab" onclick="openCEONavigation(event)" data-i18n="tabCEO">🔒 CEO Dashboard</button>
+    </div>
+
+    <!-- 1. ADVANCED PHOTO STUDIO -->
+    <div id="editor" class="section active">
+        <h2 data-i18n="studioTitle">Professional Photo Studio</h2>
+        
+        <input type="file" id="imageLoader" accept="image/*"><br>
+        <button class="btn btn-blue" onclick="openCamera()" data-i18n="btnCamera">📷 Live Camera Snapshot</button><br>
+        <video id="webcam" style="display:none; width:100%; border-radius:8px; margin-top:10px;" autoplay></video>
+        <button id="snapBtn" class="btn btn-danger" style="display:none;" onclick="takeSnapshot()" data-i18n="btnSnap">Click Snapshot</button>
+        
+        <canvas id="imageCanvas"></canvas><br>
+
+        <!-- EVENT & MARRIAGE OVERLAY TOOLS -->
+        <div class="tool-box">
+            <p class="tool-title" data-i18n="titleEvent">🎉 Event & Special Occasion Frames:</p>
+            <button class="btn btn-tool" onclick="applyEventOverlay('marriage')" data-i18n="btnMarriage">💒 Wedding Banner</button>
+            <button class="btn btn-tool" onclick="applyEventOverlay('birthday')" data-i18n="btnBirthday">🎂 Happy Birthday Frame</button>
+            <button class="btn btn-tool" onclick="applyEventOverlay('party')" data-i18n="btnParty">🎈 Celebration Frame</button>
+        </div>
+
+        <!-- FOREIGN & WORLD TOUR BACKGROUND TOOLS -->
+        <div class="tool-box">
+            <p class="tool-title" data-i18n="titleWorld">✈️ World Tourist Backgrounds:</p>
+            <label style="font-size:11px; color:#aaa;" data-i18n="lblWorld">Select Foreign Background Image:</label>
+            <input type="file" id="bgImageLoader" accept="image/*" onchange="applyWorldBackground(event)">
+        </div>
+
+        <!-- COLOR FILTERS TOOL PANEL -->
+        <div class="tool-box">
+            <p class="tool-title" data-i18n="titleColor">🎨 Photo Color Filters:</p>
+            <button class="btn btn-tool" onclick="applyFilter('normal')">Normal</button>
+            <button class="btn btn-tool" onclick="applyFilter('grayscale')">Black & White</button>
+            <button class="btn btn-tool" onclick="applyFilter('sepia')">Vintage Sepia</button>
+            <button class="btn btn-tool" onclick="applyFilter('bright')">High Brightness</button>
+            <button class="btn btn-tool" onclick="applyFilter('invert')">Negative Filter</button>
+        </div>
+
+        <!-- FRAME OPTIONS -->
+        <div class="tool-box">
+            <p class="tool-title" data-i18n="titleBorders">🖼 Borders & Frames:</p>
+            <button class="btn btn-tool" onclick="applyFrame('gold')">👑 Gold Royal Frame</button>
+            <button class="btn btn-tool" onclick="applyFrame('neon')">⚡ Neon Glow Border</button>
+            <button class="btn btn-tool" onclick="applyFrame('classic')">🔳 Classic Border</button>
+        </div>
+
+        <!-- COUPLE PHOTO MAKER -->
+        <div class="tool-box">
+            <p class="tool-title" data-i18n="titleCouple">💑 Couple Photo Converter:</p>
+            <label style="font-size:11px; color:#aaa;" data-i18n="lblPartner">Select Partner Photo:</label>
+            <input type="file" id="secondImageLoader" accept="image/*" onchange="createCouplePhoto(event)">
+        </div>
+
+        <!-- FULL HD ENHANCER -->
+        <div class="tool-box">
+            <p class="tool-title" data-i18n="titleHD">✨ Full HD Enhancer:</p>
+            <button class="btn btn-blue" style="width:95%;" onclick="enhanceHDQuality()" data-i18n="btnEnhance">Convert to Ultra HD Quality</button>
+        </div>
+
+        <p class="watermark-info" id="watermarkStatusText" data-i18n="watermarkFree">Status: Free Mode (Watermark Added on Download)</p>
+        <button class="btn" style="width:95%; padding:12px; margin-top:10px;" onclick="downloadImage()" data-i18n="btnDownload">Download HD Photo</button>
+    </div>
+    <!-- 2. STYLISH NAME GENERATOR -->
+    <div id="stylist" class="section">
+        <h2 data-i18n="titleStylist">Stylish Name & Logo Stylist</h2>
+        <input type="text" id="nameInput" placeholder="Enter your name..." oninput="generateNames()"><br>
+        <div id="nameResults"></div>
+    </div>
+
+    <!-- 3. SOCIAL MEDIA BIO GENERATOR -->
+    <div id="bio" class="section">
+        <h2 data-i18n="titleBio">Social Media Bio Creator</h2>
+        <input type="text" id="bioName" placeholder="Your Name (e.g. Rahul)"><br>
+        <input type="text" id="bioTag" placeholder="Tagline (e.g. Gamer, Coder)"><br>
+        <button class="btn" onclick="generateBios()" data-i18n="btnGenBio">Generate Bio</button>
+        <div id="bioResults"></div>
+    </div>
+
+    <!-- 4. PUBLIC GALLERY -->
+    <div id="gallery" class="section">
+        <h2 data-i18n="titleGallery">Public Gallery & Couple DPs</h2>
+        <p style="color:#aaa; font-size:12px;" data-i18n="descGallery">Download CEO uploaded ready-to-use DPs & Wallpapers:</p>
+        
+        <div class="gallery-grid" id="publicGalleryGrid">
+            <div class="gallery-item">
+                <img src="https://via.placeholder.com/150/00e676/000000?text=Couple+DP+1" alt="DP">
+                <p style="font-size:11px; margin-top:4px;">Couple DP Style</p>
+                <button class="btn btn-blue" style="padding:4px 8px; font-size:10px;" onclick="alert('Downloading HD file...')" data-i18n="btnGalleryDl">Download</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. CEO DASHBOARD -->
+    <div id="ceoSection" class="section">
+        
+        <div id="ceoLoginForm" class="login-box">
+            <h3 style="color:#ff5252; margin-bottom:10px;" data-i18n="ceoLoginHead">🔒 CEO Login Authorization</h3>
+            <p style="font-size:12px; color:#aaa; margin-bottom:15px;" data-i18n="ceoLoginDesc">Enter Master Credentials to access controls:</p>
+            <input type="text" id="adminUser" placeholder="CEO Username"><br>
+            <input type="password" id="adminPass" placeholder="CEO Password"><br>
+            <button class="btn btn-danger" style="width:90%; margin-top:10px;" onclick="verifyCEOLogin()" data-i18n="btnCeoLogin">Login Dashboard</button>
+        </div>
+
+        <div id="ceoMasterPanel" class="ceo-box" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3>⚙ CEO Master Control Panel</h3>
+                <button class="btn btn-danger" style="padding:4px 8px; font-size:10px;" onclick="logoutCEO()">Logout</button>
+            </div>
+
+            <div class="setting-row">
+                <span data-i18n="settingVip">VIP Membership Mode:</span>
+                <button class="btn" id="vipToggleBtn" onclick="toggleVIPMaster()">Switch to VIP (No Watermark)</button>
+            </div>
+
+            <div class="setting-row">
+                <span data-i18n="settingWatermark">Watermark Text:</span>
+                <input type="text" id="customWatermarkInput" value="Edited with All in One Photo Tool" style="width:50%; margin:0;" onchange="updateWatermarkText()">
+            </div>
+
+            <div class="setting-row">
+                <span data-i18n="settingAds">Monetization (Ads):</span>
+                <button class="btn btn-blue" onclick="toggleAds()">Toggle Ads On/Off</button>
+            </div>
+
+            <div style="margin-top:15px; border-top:1px solid #ff5252; padding-top:10px;">
+                <p style="font-size:13px; font-weight:bold; color:#ffd700;" data-i18n="titleLivePay">💳 Live Payment Setup Manager:</p>
+                
+                <label style="font-size:11px; color:#aaa; text-align:left; display:block; margin-top:5px;">Update UPI ID:</label>
+                <input type="text" id="adminUpiInput" value="phonepe@upi" style="width:95%;" placeholder="Enter New UPI ID">
+
+                <label style="font-size:11px; color:#aaa; text-align:left; display:block; margin-top:5px;">Upload New Payment QR Code Image:</label>
+                <input type="file" id="adminQrUpload" accept="image/*" style="width:95%;"><br>
+
+                <button class="btn btn-blue" style="width:95%; margin-top:8px;" onclick="savePaymentSettings()" data-i18n="btnSavePay">Save Payment Settings</button>
+            </div>
+
+            <div style="margin-top:15px; border-top:1px solid #444; padding-top:10px;">
+                <p style="font-size:13px; font-weight:bold; color:#ffd700;" data-i18n="titlePendingPay">📥 Pending Payment Verifications:</p>
+                <div id="pendingPaymentList" style="font-size:12px; color:#aaa; margin-top:5px;">कोई नया पेमेंट पेंडिंग नहीं है।</div>
+            </div>
+
+            <div style="margin-top:15px; border-top:1px solid #444; padding-top:10px;">
+                <p style="font-size:13px; font-weight:bold; color:#00e676;" data-i18n="titlePubUpload">Upload Image to Public Gallery:</p>
+                <input type="file" id="adminGalleryUpload" accept="image/*"><br>
+                <button class="btn" onclick="uploadToGallery()" data-i18n="btnPubUpload">Publish to Public Gallery</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- VIP PAYMENT POPUP MODAL -->
+    <div class="modal-overlay" id="paymentModal">
+        <div class="payment-card">
+            <h3 style="color:#ffd700; margin-bottom:5px;" data-i18n="payModalTitle">💎 Upgrade to VIP Access</h3>
+            <p style="font-size:11px; color:#ddd;" data-i18n="payModalDesc">Scan QR or Pay via UPI ID</p>
+
+            <img id="qrDisplay" class="qr-img" src="1000064115.jpg" alt="Payment QR Code">
+            <p style="font-size:12px; font-weight:bold; color:#00e676;" id="upiIdDisplay">UPI ID: phonepe@upi</p>
+
+            <hr style="border:0.5px solid #444; margin:12px 0;">
+
+            <input type="text" id="utrNumber" placeholder="12-Digit UTR / Transaction ID" oninput="validatePaymentFields()"><br>
+            <input type="file" id="screenshotUpload" accept="image/*" onchange="processScreenshotVerification()"><br>
+            
+            <div id="ocrStatusMsg" class="status-msg" data-i18n="ocrMsg">Scanning image, please wait...</div>
+            <div id="utrErrorMsg" class="error-msg" data-i18n="utrError">Invalid UTR or Payment ID. Please check and try again.</div>
+
+            <button class="btn" id="verifyPayBtn" style="width:100%; margin-top:10px;" onclick="submitVIPVerification()" disabled data-i18n="btnVerifyPay">Verify Payment</button>
+            <button class="btn btn-danger" style="width:100%; margin-top:5px; padding:6px;" onclick="closeVIPPaymentModal()" data-i18n="btnCancel">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Bottom Ad Slot -->
+    <div class="ad-slot" id="bottomAdSlot">[ Bottom Ad Banner - CEO Admin Managed ]</div>
+    <script>
+        // MULTI-LANGUAGE TRANSLATION DICTIONARY
+        const i18nData = {
+            hi: {
+                vipBadge: "💎 VIP Unlock",
+                trustBadge: "✓ 100% सुरक्षित और स्टूडियो क्वालिटी | 50,000+ उपयोगकर्ताओं का भरोसा",
+                tabStudio: "फोटो स्टूडियो",
+                tabStylist: "फैंसी नाम",
+                tabBio: "बायो क्रिएटर",
+                tabGallery: "पब्लिक गैलरी",
+                tabCEO: "🔒 CEO डैशबोर्ड",
+                studioTitle: "प्रोफेशनल फोटो स्टूडियो",
+                btnCamera: "📷 लाइव कैमरा स्नैपशॉट",
+                btnSnap: "फोटो खींचें",
+                titleEvent: "🎉 इवेंट और विशेष अवसर फ्रेम:",
+                btnMarriage: "💒 शुभ विवाह / वेडिंग बैनर",
+                btnBirthday: "🎂 हैप्पी बर्थडे फ्रेम",
+                btnParty: "🎈 पार्टी / सेलिब्रेशन फ्रेम",
+                titleWorld: "✈️ विदेश का बैकग्राउंड बदलें:",
+                lblWorld: "विदेश/स्थान की बैकग्राउंड फोटो चुनें:",
+                titleColor: "🎨 फोटो कलर फिल्टर्स:",
+                titleBorders: "🖼 बॉर्डर्स और फ्रेम्स:",
+                titleCouple: "💑 कपल फोटो कंवर्टर:",
+                lblPartner: "दूसरी फोटो चुनें (Partner Photo):",
+                titleHD: "✨ Full HD एन्हांसर:",
+                btnEnhance: "अल्ट्रा HD क्वालिटी में बदलें",
+                watermarkFree: "स्टेटस: फ्री मोड (डाउनलोड पर वॉटरमार्क आएगा)",
+                watermarkVip: "स्टेटस: VIP मोड चालू (बिना वॉटरमार्क डाउनलोड)",
+                btnDownload: "HD फोटो डाउनलोड करें",
+                titleStylist: "स्टाइलिश नाम और लोगो स्टाइल",
+                titleBio: "सोशल मीडिया बायो क्रिएटर",
+                btnGenBio: "बायो जनरेट करें",
+                titleGallery: "पब्लिक गैलरी और कपल डीपी",
+                descGallery: "सीईओ द्वारा अपलोड की गई तैयार फोटो/कपल्स डीपी यहाँ से डाउनलोड करें:",
+                btnGalleryDl: "डाउनलोड",
+                ceoLoginHead: "🔒 CEO लॉगिन ऑथराइजेशन",
+                ceoLoginDesc: "मास्टर कंट्रोल एक्सेस करने के लिए क्रेडेंशियल्स दर्ज करें:",
+                btnCeoLogin: "लॉगिन डैशबोर्ड",
+                settingVip: "VIP मेंबरशिप मोड:",
+                settingWatermark: "वॉटरमार्क टेक्स्ट:",
+                settingAds: "विज्ञापन (Monetization):",
+                titleLivePay: "💳 लाइव पेमेंट सेटअप मैनेजर:",
+                btnSavePay: "पेमेंट सेटिंग्स सेव करें",
+                titlePendingPay: "📥 पेंडिंग पेमेंट वेरीफिकेशन्स:",
+                titlePubUpload: "पब्लिक गैलरी में फोटो अपलोड करें:",
+                btnPubUpload: "पब्लिक गैलरी में पब्लिश करें",
+                payModalTitle: "💎 VIP एक्सेस में अपग्रेड करें",
+                payModalDesc: "QR कोड स्कैन करें या UPI ID से भुगतान करें",
+                ocrMsg: "स्क्रीनशॉट से UTR स्कैन हो रहा है...",
+                utrError: "आपका यूटीआर नंबर या पेमेंट आईडी गलत है। पुनः जांचें।",
+                btnVerifyPay: "वेरीफाई पेमेंट",
+                btnCancel: "रद्द करें"
+            },
+            en: {
+                vipBadge: "💎 VIP Unlock",
+                trustBadge: "✓ 100% Safe & Secure Studio Quality | Trusted by 50,000+ Users",
+                tabStudio: "Photo Studio",
+                tabStylist: "Fancy Names",
+                tabBio: "Bio Creator",
+                tabGallery: "Public Gallery",
+                tabCEO: "🔒 CEO Dashboard",
+                studioTitle: "Professional Photo Studio",
+                btnCamera: "📷 Live Camera Snapshot",
+                btnSnap: "Take Snapshot",
+                titleEvent: "🎉 Event & Special Occasion Frames:",
+                btnMarriage: "💒 Wedding Banner",
+                btnBirthday: "🎂 Happy Birthday Frame",
+                btnParty: "🎈 Celebration Frame",
+                titleWorld: "✈️ World Tourist Backgrounds:",
+                lblWorld: "Select Foreign Background Image:",
+                titleColor: "🎨 Photo Color Filters:",
+                titleBorders: "🖼 Borders & Frames:",
+                titleCouple: "💑 Couple Photo Converter:",
+                lblPartner: "Select Partner Photo:",
+                titleHD: "✨ Full HD Enhancer:",
+                btnEnhance: "Convert to Ultra HD Quality",
+                watermarkFree: "Status: Free Mode (Watermark Added on Download)",
+                watermarkVip: "Status: VIP Active (Clean Export Without Watermark)",
+                btnDownload: "Download HD Photo",
+                titleStylist: "Stylish Name & Logo Stylist",
+                titleBio: "Social Media Bio Creator",
+                btnGenBio: "Generate Bio",
+                titleGallery: "Public Gallery & Couple DPs",
+                descGallery: "Download CEO uploaded ready-to-use DPs & Wallpapers:",
+                btnGalleryDl: "Download",
+                ceoLoginHead: "🔒 CEO Login Authorization",
+                ceoLoginDesc: "Enter Master Credentials to access controls:",
+                btnCeoLogin: "Login Dashboard",
+                settingVip: "VIP Membership Mode:",
+                settingWatermark: "Watermark Text:",
+                settingAds: "Monetization (Ads):",
+                titleLivePay: "💳 Live Payment Setup Manager:",
+                btnSavePay: "Save Payment Settings",
+                titlePendingPay: "📥 Pending Payment Verifications:",
+                titlePubUpload: "Upload Image to Public Gallery:",
+                btnPubUpload: "Publish to Public Gallery",
+                payModalTitle: "💎 Upgrade to VIP Access",
+                payModalDesc: "Scan QR Code or Pay via UPI ID",
+                ocrMsg: "Scanning image UTR, please wait...",
+                utrError: "Invalid UTR or Payment ID. Please verify.",
+                btnVerifyPay: "Verify Payment",
+                btnCancel: "Cancel"
+            }
+        };
+
+        let currentLang = "hi";
+
+        function switchLanguage(lang) {
+            currentLang = lang;
+            document.querySelectorAll('[data-i18n]').forEach(elem => {
+                const key = elem.getAttribute('data-i18n');
+                if (i18nData[lang] && i18nData[lang][key]) {
+                    elem.innerText = i18nData[lang][key];
+                }
+            });
+            drawCanvas();
+        }
+
+        // Global System Variables
+        let isVIP = false;
+        let watermarkText = "Edited with All in One Photo Tool";
+        let adsEnabled = true;
+        let isCEOLoggedIn = false;
+        let scannedOcrText = "";
+        let isScreenshotValid = false;
+        let activeFilter = 'normal';
+        let activeFrame = 'none';
+        let activeOverlay = 'none';
+
+        function switchTab(tabId, event) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            if(event) event.target.classList.add('active');
+        }
+
+        function openVIPPaymentModal() {
+            if(isVIP) {
+                alert(currentLang === 'hi' ? "आप पहले से ही VIP मेंबर हैं!" : "You are already a VIP member!");
+            } else {
+                document.getElementById('paymentModal').style.display = "flex";
+                resetPaymentForm();
+            }
+        }
+
+        function closeVIPPaymentModal() {
+            document.getElementById('paymentModal').style.display = "none";
+        }
+
+        function resetPaymentForm() {
+            document.getElementById('utrNumber').value = '';
+            document.getElementById('screenshotUpload').value = '';
+            document.getElementById('utrErrorMsg').style.display = 'none';
+            document.getElementById('ocrStatusMsg').style.display = 'none';
+            document.getElementById('verifyPayBtn').disabled = true;
+            scannedOcrText = "";
+            isScreenshotValid = false;
+        }
+
+        function savePaymentSettings() {
+            const upiVal = document.getElementById('adminUpiInput').value.trim();
+            const qrInput = document.getElementById('adminQrUpload');
+
+            if(upiVal !== "") {
+                document.getElementById('upiIdDisplay').innerText = "UPI ID: " + upiVal;
+            }
+
+            if(qrInput.files && qrInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('qrDisplay').src = e.target.result;
+                    alert(currentLang === 'hi' ? "पेमेंट QR कोड और UPI ID अपडेट हो गया!" : "Payment QR and UPI ID updated!");
+                }
+                reader.readAsDataURL(qrInput.files[0]);
+            } else {
+                alert(currentLang === 'hi' ? "UPI ID अपडेट कर दी गई है!" : "UPI ID Updated!");
+            }
+        }
+
+        function processScreenshotVerification() {
+            const fileInput = document.getElementById('screenshotUpload');
+            const file = fileInput.files[0];
+            const statusMsg = document.getElementById('ocrStatusMsg');
+            const errorMsg = document.getElementById('utrErrorMsg');
+
+            if (!file) return;
+
+            statusMsg.style.display = 'block';
+            statusMsg.innerText = i18nData[currentLang].ocrMsg;
+            errorMsg.style.display = 'none';
+
+            Tesseract.recognize(
+                file,
+                'eng',
+                { logger: m => console.log(m) }
+            ).then(({ data: { text } }) => {
+                statusMsg.style.display = 'none';
+                scannedOcrText = text.replace(/\s+/g, '');
+                isScreenshotValid = true;
+                validatePaymentFields();
+            }).catch(err => {
+                statusMsg.style.display = 'none';
+                alert(currentLang === 'hi' ? "स्क्रीनशॉट पढ़ा नहीं जा सका।" : "Could not scan screenshot.");
+            });
+        }
+
+        function validatePaymentFields() {
+            const utr = document.getElementById('utrNumber').value.trim();
+            const errorMsg = document.getElementById('utrErrorMsg');
+            const verifyBtn = document.getElementById('verifyPayBtn');
+
+            if (!utr || utr.length < 10) {
+                errorMsg.style.display = 'none';
+                verifyBtn.disabled = true;
+                return;
+            }
+
+            if (isScreenshotValid && scannedOcrText.includes(utr)) {
+                errorMsg.style.display = 'none';
+                verifyBtn.disabled = false;
+            } else if (isScreenshotValid) {
+                errorMsg.style.display = 'block';
+                verifyBtn.disabled = true;
+            }
+        }
+
+        function submitVIPVerification() {
+            const utr = document.getElementById('utrNumber').value.trim();
+            const list = document.getElementById('pendingPaymentList');
+            
+            list.innerHTML = `
+                <div style="background:#2a2a2a; padding:8px; border-radius:6px; margin-top:5px;">
+                    <strong>UTR Verified:</strong> ${utr} <br>
+                    <strong>Status:</strong> Matched with Screenshot <br>
+                    <button class="btn" style="padding:4px 8px; font-size:10px;" onclick="approveVIPFromAdmin()">Approve VIP</button>
+                </div>
+            `;
+
+            alert(currentLang === 'hi' ? "पेमेंट वेरीफाई हो गया! CEO अप्रूवल के बाद VIP चालू हो जाएगा।" : "Payment verified! VIP will activate after CEO approval.");
+            closeVIPPaymentModal();
+        }
+
+        function approveVIPFromAdmin() {
+            toggleVIPMaster();
+            document.getElementById('pendingPaymentList').innerHTML = "<span style='color:#00e676;'>VIP Granted!</span>";
+        }
+
+        function openCEONavigation(event) {
+            switchTab('ceoSection', event);
+            if(isCEOLoggedIn) {
+                document.getElementById('ceoLoginForm').style.display = "none";
+                document.getElementById('ceoMasterPanel').style.display = "block";
+            } else {
+                document.getElementById('ceoLoginForm').style.display = "block";
+                document.getElementById('ceoMasterPanel').style.display = "none";
+            }
+        }
+
+        function verifyCEOLogin() {
+            const user = document.getElementById('adminUser').value;
+            const pass = document.getElementById('adminPass').value;
+
+            if(user === "khankhan786@" && pass === "khan786@1") {
+                isCEOLoggedIn = true;
+                alert("CEO Access Granted!");
+                document.getElementById('ceoLoginForm').style.display = "none";
+                document.getElementById('ceoMasterPanel').style.display = "block";
+            } else {
+                alert("Invalid Credentials!");
+            }
+        }
+
+        function logoutCEO() {
+            isCEOLoggedIn = false;
+            document.getElementById('adminUser').value = '';
+            document.getElementById('adminPass').value = '';
+            document.getElementById('ceoLoginForm').style.display = "block";
+            document.getElementById('ceoMasterPanel').style.display = "none";
+            switchTab('editor');
+            alert("CEO Logged Out.");
+        }
+
+        function toggleVIPMaster() {
+            isVIP = !isVIP;
+            const badge = document.getElementById('vipStatusBadge');
+            const statusText = document.getElementById('watermarkStatusText');
+            const btn = document.getElementById('vipToggleBtn');
+
+            if(isVIP) {
+                badge.innerText = "VIP: Active";
+                badge.style.background = "#00e676";
+                statusText.innerText = i18nData[currentLang].watermarkVip;
+                btn.innerText = "Switch to FREE Mode";
+                btn.className = "btn btn-danger";
+            } else {
+                badge.innerText = i18nData[currentLang].vipBadge;
+                badge.style.background = "#ffd700";
+                statusText.innerText = i18nData[currentLang].watermarkFree;
+                btn.innerText = "Switch to VIP Mode";
+                btn.className = "btn";
+            }
+            drawCanvas();
+        }
+
+        function updateWatermarkText() {
+            watermarkText = document.getElementById('customWatermarkInput').value;
+            drawCanvas();
+        }
+
+        function toggleAds() {
+            adsEnabled = !adsEnabled;
+            document.getElementById('topAdSlot').style.display = adsEnabled ? "block" : "none";
+            document.getElementById('bottomAdSlot').style.display = adsEnabled ? "block" : "none";
+            alert(adsEnabled ? "Ads Enabled" : "Ads Disabled");
+        }
+        // Canvas Engine
+        const imageLoader = document.getElementById('imageLoader');
+        const canvas = document.getElementById('imageCanvas');
+        const ctx = canvas.getContext('2d');
+        let img = new Image();
+
+        imageLoader.addEventListener('change', handleImage, false);
+
+        function handleImage(e) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                img.onload = function() {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    activeFilter = 'normal';
+                    activeFrame = 'none';
+                    activeOverlay = 'none';
+                    drawCanvas();
+                }
+                img.src = event.target.result;
+            }
+            reader.readAsDataURL(e.target.files[0]);
+        }
+
+        function applyEventOverlay(type) {
+            if(!img.src) return alert(currentLang === 'hi' ? "कृपया पहले फोटो अपलोड करें!" : "Please upload a photo first!");
+            activeOverlay = type;
+            drawCanvas();
+        }
+
+        function applyWorldBackground(e) {
+            if(!img.src) return alert(currentLang === 'hi' ? "कृपया पहले मुख्य फोटो अपलोड करें!" : "Please upload main photo first!");
+            const file = e.target.files[0];
+            if(!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const bgImg = new Image();
+                bgImg.onload = function() {
+                    canvas.width = bgImg.width;
+                    canvas.height = bgImg.height;
+
+                    ctx.drawImage(bgImg, 0, 0);
+
+                    const userAspect = img.width / img.height;
+                    const drawHeight = canvas.height * 0.8;
+                    const drawWidth = drawHeight * userAspect;
+                    const drawX = (canvas.width - drawWidth) / 2;
+                    const drawY = canvas.height - drawHeight;
+
+                    ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = canvas.width;
+                    tempCanvas.height = canvas.height;
+                    tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
+                    img.src = tempCanvas.toDataURL();
+                    alert(currentLang === 'hi' ? "बैकग्राउंड बदल दिया गया है!" : "Background applied successfully!");
+                }
+                bgImg.src = evt.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+
+        function applyFilter(type) {
+            if(!img.src) return alert(currentLang === 'hi' ? "कृपया फोटो अपलोड करें!" : "Please upload photo!");
+            activeFilter = type;
+            drawCanvas();
+        }
+
+        function applyFrame(type) {
+            if(!img.src) return alert(currentLang === 'hi' ? "कृपया फोटो अपलोड करें!" : "Please upload photo!");
+            activeFrame = type;
+            drawCanvas();
+        }
+
+        function enhanceHDQuality() {
+            if(!img.src) return alert(currentLang === 'hi' ? "कृपया फोटो अपलोड करें!" : "Please upload photo!");
+            alert(currentLang === 'hi' ? "Ultra HD क्वालिटी अप्लाई कर दी गई है!" : "Ultra HD Quality applied!");
+            activeFilter = 'bright';
+            drawCanvas();
+        }
+
+        function createCouplePhoto(e) {
+            if(!img.src) return alert(currentLang === 'hi' ? "पहले मुख्य फोटो अपलोड करें!" : "Upload first photo!");
+            const file = e.target.files[0];
+            if(!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const img2 = new Image();
+                img2.onload = function() {
+                    canvas.width = img.width * 2 + 30;
+                    canvas.height = Math.max(img.height, img2.height);
+
+                    ctx.fillStyle = "#111";
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    ctx.drawImage(img, 0, (canvas.height - img.height) / 2);
+                    ctx.drawImage(img2, img.width + 30, (canvas.height - img2.height) / 2);
+
+                    ctx.fillStyle = "#ff5252";
+                    ctx.font = `${canvas.width / 15}px Arial`;
+                    ctx.textAlign = "center";
+                    ctx.fillText("❤️", img.width + 15, canvas.height / 2);
+
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = canvas.width;
+                    tempCanvas.height = canvas.height;
+                    tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
+                    img.src = tempCanvas.toDataURL();
+                    alert(currentLang === 'hi' ? "कपल फोटो बना दी गई है!" : "Couple photo created!");
+                }
+                img2.src = evt.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+
+        function drawCanvas() {
+            if (!img.src) return;
+
+            if (activeFilter === 'grayscale') ctx.filter = "grayscale(100%)";
+            else if (activeFilter === 'sepia') ctx.filter = "sepia(100%)";
+            else if (activeFilter === 'bright') ctx.filter = "brightness(125%) contrast(110%)";
+            else if (activeFilter === 'invert') ctx.filter = "invert(100%)";
+            else ctx.filter = "none";
+
+            ctx.drawImage(img, 0, 0);
+            ctx.filter = "none";
+
+            if (activeFrame === 'gold') {
+                ctx.lineWidth = Math.max(10, canvas.width / 30);
+                ctx.strokeStyle = "#ffd700";
+                ctx.strokeRect(0, 0, canvas.width, canvas.height);
+            } else if (activeFrame === 'neon') {
+                ctx.lineWidth = Math.max(8, canvas.width / 35);
+                ctx.strokeStyle = "#00e676";
+                ctx.strokeRect(0, 0, canvas.width, canvas.height);
+            } else if (activeFrame === 'classic') {
+                ctx.lineWidth = Math.max(15, canvas.width / 25);
+                ctx.strokeStyle = "#ffffff";
+                ctx.strokeRect(0, 0, canvas.width, canvas.height);
+            }
+
+            if (activeOverlay === 'marriage') {
+                ctx.fillStyle = "rgba(180, 0, 0, 0.75)";
+                ctx.fillRect(0, canvas.height - canvas.height * 0.18, canvas.width, canvas.height * 0.18);
+                ctx.fillStyle = "#ffd700";
+                ctx.font = `bold ${canvas.width / 18}px Arial`;
+                ctx.textAlign = "center";
+                ctx.fillText(currentLang === 'hi' ? "💍 🌺 शुभ विवाह 🌺 💍" : "💍 HAPPY WEDDING 💍", canvas.width / 2, canvas.height - canvas.height * 0.06);
+            } else if (activeOverlay === 'birthday') {
+                ctx.fillStyle = "rgba(0, 102, 204, 0.75)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height * 0.15);
+                ctx.fillStyle = "#ffffff";
+                ctx.font = `bold ${canvas.width / 16}px Arial`;
+                ctx.textAlign = "center";
+                ctx.fillText("🎉 🎂 HAPPY BIRTHDAY 🎈 🎁", canvas.width / 2, canvas.height * 0.10);
+            } else if (activeOverlay === 'party') {
+                ctx.fillStyle = "rgba(128, 0, 128, 0.75)";
+                ctx.fillRect(0, canvas.height - canvas.height * 0.15, canvas.width, canvas.height * 0.15);
+                ctx.fillStyle = "#00e676";
+                ctx.font = `bold ${canvas.width / 18}px Arial`;
+                ctx.textAlign = "center";
+                ctx.fillText("✨ 🥳 SPECIAL EVENT CELEBRATION 🥳 ✨", canvas.width / 2, canvas.height - canvas.height * 0.05);
+            }
+
+            if (!isVIP) {
+                const fontSize = Math.max(16, canvas.width / 25);
+                ctx.font = `${fontSize}px Arial`;
+                ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+                ctx.shadowColor = "black";
+                ctx.shadowBlur = 4;
+                ctx.textAlign = "right";
+                ctx.fillText(watermarkText, canvas.width - 20, canvas.height - 20);
+            }
+        }
+
+        function downloadImage() {
+            if (!img.src) return alert(currentLang === 'hi' ? "कृपया पहले कोई फोटो अपलोड करें!" : "Please upload a photo first!");
+            const link = document.createElement('a');
+            link.download = 'vip-studio-photo.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+
+        function openCamera() {
+            const video = document.getElementById('webcam');
+            const snapBtn = document.getElementById('snapBtn');
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    video.srcObject = stream;
+                    video.style.display = "block";
+                    snapBtn.style.display = "inline-block";
+                })
+                .catch(err => alert("Camera permission denied!"));
+        }
+
+        function takeSnapshot() {
+            const video = document.getElementById('webcam');
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            img.src = canvas.toDataURL();
+            
+            const stream = video.srcObject;
+            if(stream) stream.getTracks().forEach(track => track.stop());
+            video.style.display = "none";
+            document.getElementById('snapBtn').style.display = "none";
+            drawCanvas();
+        }
+
+        function generateNames() {
+            const input = document.getElementById('nameInput').value;
+            const container = document.getElementById('nameResults');
+            container.innerHTML = '';
+            if(!input) return;
+
+            const styles = [
+                val => `★彡 [${val}] 彡★`,
+                val => `꧁༺ ${val} ༻꧂`,
+                val => `┊${val}┊`,
+                val => ` 𝓡𝓪𝓳𝓪 `.replace('Raja', val),
+                val => ` Ⓡⓐⓙⓐ `.replace('Raja', val)
+            ];
+
+            styles.forEach(styleFunc => {
+                const styled = styleFunc(input);
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="card-header">
+                        <span>${styled}</span>
+                        <button class="btn btn-blue" style="padding:4px 8px; font-size:11px;" onclick="copyText('${styled}')">Copy</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function generateBios() {
+            const name = document.getElementById('bioName').value || 'User';
+            const tag = document.getElementById('bioTag').value || 'VIP Member';
+            const container = document.getElementById('bioResults');
+            container.innerHTML = '';
+
+            const bioTemplates = [
+                `❖ Mr. ${name} ❖\n👑 Official Account\n🔥 ${tag}\n🚫 Don't Trust Anyone\n🎯 Single & Happy`,
+                `👑 ROYAL ENTRY 👑\n💎 Name: ${name}\n⚡ Work: ${tag}\n🔥 Attitude Depends On You`,
+                `꧁༺ ${name} ༻꧂\n😎 Simple Boy\n🖤 Lover of ${tag}\n✨ Dreams Big`
+            ];
+
+            bioTemplates.forEach((bio, idx) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="card-header">
+                        <strong style="color:#00e676;">Style ${idx + 1}</strong>
+                        <button class="btn btn-blue" style="padding:4px 8px; font-size:11px;" onclick="copyText(\`${bio}\`)">Copy Bio</button>
+                    </div>
+                    <div class="card-text">${bio}</div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function uploadToGallery() {
+            const fileInput = document.getElementById('adminGalleryUpload');
+            if(!fileInput.files[0]) return alert("Select photo!");
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const grid = document.getElementById('publicGalleryGrid');
+                const item = document.createElement('div');
+                item.className = 'gallery-item';
+                item.innerHTML = `
+                    <img src="${e.target.result}" alt="Gallery Item">
+                    <p style="font-size:11px; margin-top:4px;">CEO Uploaded</p>
+                    <button class="btn btn-blue" style="padding:4px 8px; font-size:10px;" onclick="window.open('${e.target.result}')">Download</button>
+                `;
+                grid.prepend(item);
+                alert("Photo Published!");
+            }
+            reader.readAsDataURL(fileInput.files[0]);
+        }
+
+        function copyText(text) {
+            navigator.clipboard.writeText(text).then(() => alert("Copied: " + text));
+        }
+    </script>
+</body>
+</html>
